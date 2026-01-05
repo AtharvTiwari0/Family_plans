@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Plans - Realtime</title>
+    <style>
+        /* --- Gemini Dark Theme (Same as before) --- */
+        :root {
+            --bg-color: #131314;
+            --card-bg: #1E1F20;
+            --text-color: #E3E3E3;
+            --border-color: #444746;
+            --accent-gradient: linear-gradient(135deg, #4b90ff 0%, #ff5546 100%);
+            --input-bg: #282A2C;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container { width: 100%; max-width: 500px; }
+
+        h1 {
+            font-size: 2rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #A8C7FA; }
+
+        input {
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            background-color: var(--input-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; color: white; font-size: 1rem; box-sizing: border-box; outline: none;
+        }
+        input:focus { border-color: #4b90ff; }
+
+        button {
+            width: 100%; padding: 14px; background: var(--accent-gradient);
+            border: none; border-radius: 25px; color: white; font-size: 1rem;
+            font-weight: bold; cursor: pointer; transition: opacity 0.3s;
+        }
+        button:hover { opacity: 0.9; }
+
+        /* Plans List Styling */
+        .plans-container { margin-top: 30px; }
+
+        .plan-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 15px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+        .plan-details h3 { margin: 0 0 5px 0; font-size: 1.1rem; color: white; }
+        .plan-details p { margin: 0; font-size: 0.9rem; color: #C4C7C5; }
+        .date-badge {
+            background-color: #2D2F31; padding: 6px 12px; border-radius: 8px;
+            font-size: 0.85rem; color: #A8C7FA; border: 1px solid var(--border-color);
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>✨ Family Planner [BY ATHARV]</h1>
+
+        <div class="input-group">
+            <label>Kis ko jana hai</label>
+            <input type="text" id="name" placeholder="Ex: Rahul...">
+
+            <label>Kha jana hai</label>
+            <input type="text" id="destination" placeholder="Ex: Goa...">
+
+            <label>Kab jana hai</label>
+            <input type="date" id="date">
+
+            <button id="addBtn">Add Plan 🚀</button>
+        </div>
+
+        <div class="plans-container" id="plansList">
+            <p style="text-align:center; color:#666;">Loading plans...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase Functions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        
+        // -----------------------------------------------------------
+         const firebaseConfig = {
+    apiKey: "AIzaSyA8xWIK8VBXUqzEeRTWFVNo2Srl_6AJvJs",
+    authDomain: "family-plans-00.firebaseapp.com",
+    databaseURL: "https://family-plans-00-default-rtdb.firebaseio.com",
+    projectId: "family-plans-00",
+    storageBucket: "family-plans-00.firebasestorage.app",
+    messagingSenderId: "989381680292",
+    appId: "1:989381680292:web:f5e85d89c2caf8ae961a31",
+        };
+        // -----------------------------------------------------------
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const plansRef = ref(db, 'plans'); // 'plans' database folder ka naam hai
+
+        // 1. ADD PLAN Function
+        document.getElementById('addBtn').addEventListener('click', function() {
+            const name = document.getElementById('name').value;
+            const dest = document.getElementById('destination').value;
+            const date = document.getElementById('date').value;
+
+            if(name && dest && date) {
+                // Firebase me data push karna
+                push(plansRef, {
+                    name: name,
+                    destination: dest,
+                    date: date
+                });
+
+                // Clear Inputs
+                document.getElementById('name').value = '';
+                document.getElementById('destination').value = '';
+                document.getElementById('date').value = '';
+            } else {
+                alert("Please saari details bharein!");
+            }
+        });
+
+        // 2. READ DATA (Realtime Listener)
+        // Jab bhi database me kuch change hoga, ye function apne aap chalega
+        onValue(plansRef, (snapshot) => {
+            const list = document.getElementById('plansList');
+            list.innerHTML = ""; // List clear karo taki duplicate na ho
+
+            const data = snapshot.val();
+
+            if (data) {
+                // Object ko Array me badal kar reverse karo (Latest upar dikhega)
+                const plansArray = Object.values(data).reverse();
+
+                plansArray.forEach(plan => {
+                    const card = document.createElement('div');
+                    card.className = 'plan-card';
+                    card.innerHTML = `
+                        <div class="plan-details">
+                            <h3>${plan.destination} ✈️</h3>
+                            <p>Going: <strong>${plan.name}</strong></p>
+                        </div>
+                        <div class="date-badge">
+                            📅 ${plan.date}
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+            } else {
+                list.innerHTML = "<p style='text-align:center; color:#666;'>No plans yet...</p>";
+            }
+        });
+
+    </script>
+
+</body>
+</html>
